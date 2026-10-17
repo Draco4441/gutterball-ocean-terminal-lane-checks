@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gutterball Ocean Terminal - Lane Tracker</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Roboto:wght@300;400;500;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #0a0a0a;
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(ellipse at 20% 50%, rgba(232, 0, 120, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(0, 191, 255, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(232, 0, 120, 0.05) 0%, transparent 50%);
+            z-index: -1;
+            animation: bgPulse 8s ease-in-out infinite alternate;
+        }
+
+        @keyframes bgPulse {
+            0% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            border-bottom: 3px solid #e80078;
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 30px rgba(232, 0, 120, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #e80078, #ff1493);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            box-shadow: 0 0 20px rgba(232, 0, 120, 0.5);
+            animation: logoPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes logoPulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(232, 0, 120, 0.5); }
+            50% { box-shadow: 0 0 35px rgba(232, 0, 120, 0.8); }
+        }
+
+        .header-title h1 {
+            font-family: 'Bebas Neue', cursive;
+            font-size: 2.2rem;
+            letter-spacing: 3px;
+            background: linear-gradient(90deg, #ffffff, #e80078);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-title p {
+            font-size: 0.85rem;
+            color: #00bfff;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            font-weight: 300;
+        }
+
+        .header-right {
+            text-align: right;
+        }
+
+        .live-clock {
+            font-family: 'Bebas Neue', cursive;
+            font-size: 2rem;
+            color: #00bfff;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(0, 191, 255, 0.5);
+        }
+
+        .live-date {
+            font-size: 0.8rem;
+            color: #888;
+            letter-spacing: 1px;
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            padding: 15px 40px;
+            background: rgba(26, 26, 46, 0.8);
+            border-bottom: 1px solid rgba(232, 0, 120, 0.2);
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stat-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: dotPulse 1.5s ease-in-out infinite;
+        }
+
+        .stat-dot.active { background: #00ff88; }
+        .stat-dot.checking { background: #ffaa00; }
+        .stat-dot.ready { background: #00bfff; }
+
+        @keyframes dotPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(0.8); }
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #aaa;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #fff;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 30px 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* Table Container */
+        .table-container {
+            background: rgba(26, 26, 46, 0.6);
+            border-radius: 16px;
+            border: 1px solid rgba(232, 0, 120, 0.2);
+            overflow: hidden;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+        }
+
+        .table-header-bar {
+            background: linear-gradient(90deg, #e80078, #ff1493, #e80078);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-header-bar h2 {
+            font-family: 'Bebas Neue', cursive;
+            font-size: 1.5rem;
+            letter-spacing: 3px;
+        }
+
+        .table-header-bar button {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+        }
+
+        .table-header-bar button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: white;
+        }
+
+        /* Lane Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            background: rgba(15, 52, 96, 0.8);
+            padding: 16px 12px;
+            text-align: center;
+            font-weight: 500;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #00bfff;
+            border-bottom: 2px solid rgba(0, 191, 255, 0.3);
+            position: sticky;
+            top: 0;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        tbody tr:hover {
+            background: rgba(232, 0, 120, 0.05);
+        }
+
+        tbody tr.lane-active {
+            background: rgba(0, 255, 136, 0.03);
+            border-left: 3px solid #00ff88;
+        }
+
+        tbody tr.lane-checked {
+            background: rgba(255, 170, 0, 0.05);
+            border-left: 3px solid #ffaa00;
+        }
+
+        tbody tr.lane-completed {
+            background: rgba(0, 191, 255, 0.05);
+            border-left: 3px solid #00bfff;
+        }
+
+        td {
+            padding: 14px 12px;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 0.95rem;
+        }
+
+        /* Lane Number */
+        .lane-number {
+            font-family: 'Bebas Neue', cursive;
+            font-size: 2rem;
+            width: 60px;
+            height: 60px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: 12px;
+            border: 2px solid rgba(232, 0, 120, 0.4);
+            color: #e80078;
+            box-shadow: 0 0 15px rgba(232, 0, 120, 0.15);
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+
+        .status-available {
+            background: rgba(0, 255, 136, 0.15);
+            color: #00ff88;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .status-in-use {
+            background: rgba(232, 0, 120, 0.15);
+            color: #ff69b4;
+            border: 1px solid rgba(232, 0, 120, 0.3);
+        }
+
+        .status-checking {
+            background: rgba(255, 170, 0, 0.15);
+            color: #ffaa00;
+            border: 1px solid rgba(255, 170, 0, 0.3);
+        }
+
+        .status-ready {
+            background: rgba(0, 191, 255, 0.15);
+            color: #00bfff;
+            border: 1px solid rgba(0, 191, 255, 0.3);
+        }
+
+        /* Input Fields */
+        .lane-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            width: 130px;
+            text-align: center;
+            transition: all 0.3s ease;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .lane-input:focus {
+            outline: none;
+            border-color: #e80078;
+            box-shadow: 0 0 15px rgba(232, 0, 120, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .lane-input::placeholder {
+            color: rgba(255, 255, 255, 0.25);
+            font-style: italic;
+        }
+
+        .lane-input:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #00cc6a, #00ff88);
+            color: #000;
+            box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
+        }
+
+        .btn-start:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0, 255, 136, 0.5);
+        }
+
+        .btn-check {
+            background: linear-gradient(135deg, #cc8800, #ffaa00);
+            color: #000;
+            box-shadow: 0 4px 15px rgba(255, 170, 0, 0.3);
+        }
+
+        .btn-check:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(255, 170, 0, 0.5);
+        }
+
+        .btn-signoff {
+            background: linear-gradient(135deg, #0088cc, #00bfff);
+            color: #000;
+            box-shadow: 0 4px 15px rgba(0, 191, 255, 0.3);
+        }
+
+        .btn-signoff:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0, 191, 255, 0.5);
+        }
+
+        .btn-complete {
+            background: linear-gradient(135deg, #e80078, #ff1493);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(232, 0, 120, 0.3);
+        }
+
+        .btn-complete:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(232, 0, 120, 0.5);
+        }
+
+        .btn-reset {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ff4444;
+            border: 1px solid rgba(255, 68, 68, 0.3);
+        }
+
+        .btn-reset:hover:not(:disabled) {
+            background: rgba(255, 68, 68, 0.15);
+        }
+
+        /* Time Display */
+        .time-display {
+            font-family: 'Roboto', monospace;
+            font-size: 0.85rem;
+            color: #00bfff;
+            background: rgba(0, 191, 255, 0.1);
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid rgba(0, 191, 255, 0.2);
+            min-height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 90px;
+        }
+
+        .time-display.empty {
+            color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        /* Log Section */
+        .log-section {
+            margin-top: 30px;
+            background: rgba(26, 26, 46, 0.6);
+            border-radius: 16px;
+            border: 1px solid rgba(0, 191, 255, 0.2);
+            overflow: hidden;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .log-header {
+            background: linear-gradient(90deg, #0f3460, #16213e);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid rgba(0, 191, 255, 0.3);
+        }
+
+        .log-header h2 {
+            font-family: 'Bebas Neue', cursive;
+            font-size: 1.5rem;
+            letter-spacing: 3px;
+            color: #00bfff;
+        }
+
+        .log-body {
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .log-body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .log-body::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .log-body::-webkit-scrollbar-thumb {
+            background: #e80078;
+            border-radius: 3px;
+        }
+
+        .log-entry {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .log-entry:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .log-time {
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #00bfff;
+            background: rgba(0, 191, 255, 0.1);
+            padding: 4px 10px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        .log-lane {
+            font-family: 'Bebas Neue', cursive;
+            font-size: 1.1rem;
+            color: #e80078;
+            min-width: 70px;
+        }
+
+        .log-message {
+            color: #ccc;
+            font-size: 0.85rem;
+            flex: 1;
+        }
+
+        .log-initials {
+            color: #ffaa00;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .no-logs {
+            text-align: center;
+            padding: 40px;
+            color: rgba(255, 255, 255, 0.2);
+            font-style: italic;
+        }
+
+        /* Export Buttons */
+        .export-bar {
+            display: flex;
+            gap: 10px;
+        }
+
+        .export-bar button {
+            background: rgba(0, 191, 255, 0.15);
+            border: 1px solid rgba(0, 191, 255, 0.3);
+            color: #00bfff;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+
+        .export-bar button:hover {
+            background: rgba(0, 191, 255, 0.3);
+        }
+
+        /* Notification Toast */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 1px solid #e80078;
+            border-radius: 12px;
+            padding: 16px 24px;
+            color: white;
+            font-size: 0.9rem;
+            box-shadow: 0 8px 30px rgba(232, 0, 120, 0.4);
+            transform: translateX(400px);
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast-icon {
+            font-size: 1.3rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .table-container {
+                overflow-x: auto;
+            }
+
+            table {
+                min-width: 1100px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 10px;
+                padding: 15px 20px;
+            }
+
+            .header-right {
+                text-align: center;
+            }
+
+            .header-title h1 {
+                font-size: 1.5rem;
+            }
+
+            .stats-bar {
+                flex-wrap: wrap;
+                gap: 15px;
+                padding: 10px 20px;
+            }
+
+            .main-content {
+                padding: 15px 10px;
+            }
+        }
+
+        /* Duration timer */
+        .duration-display {
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #ff69b4;
+            background: rgba(232, 0, 120, 0.1);
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(232, 0, 120, 0.2);
+            min-width: 70px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .duration-display.empty {
+            color: rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.03);
+            border-color: rgba(255,255,255,0.08);
+        }
+
+        /* Checkmark animation */
+        .check-icon {
+            display: inline-block;
+            color: #00ff88;
+            font-size: 1.2rem;
+            animation: checkPop 0.4s ease;
+        }
+
+        @keyframes checkPop {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: rgba(255, 255, 255, 0.2);
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+        }
+
+        .footer a {
+            color: #e80078;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-left">
+            <div class="logo-icon">🎳</div>
+            <div class="header-title">
+                <h1>GUTTERBALL OCEAN TERMINAL</h1>
+                <p>Lane Management System</p>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="live-clock" id="liveClock">00:00:00</div>
+            <div class="live-date" id="liveDate"></div>
+        </div>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+        <div class="stat-item">
+            <div class="stat-dot active"></div>
+            <span class="stat-label">Available:</span>
+            <span class="stat-value" id="statAvailable">14</span>
+        </div>
+        <div class="stat-item">
+            <div class="stat-dot" style="background: #ff69b4;"></div>
+            <span class="stat-label">In Use:</span>
+            <span class="stat-value" id="statInUse">0</span>
+        </div>
+        <div class="stat-item">
+            <div class="stat-dot checking"></div>
+            <span class="stat-label">Being Checked:</span>
+            <span class="stat-value" id="statChecking">0</span>
+        </div>
+        <div class="stat-item">
+            <div class="stat-dot ready"></div>
+            <span class="stat-label">Completed Today:</span>
+            <span class="stat-value" id="statCompleted">0</span>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+
+        <!-- Lane Table -->
+        <div class="table-container">
+            <div class="table-header-bar">
+                <h2>🎳 LANE STATUS BOARD</h2>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="refreshAll()">↻ Refresh</button>
+                    <button onclick="resetAllLanes()">⟲ Reset All</button>
+                </div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Lane</th>
+                        <th>Status</th>
+                        <th>Start Time</th>
+                        <th>Duration</th>
+                        <th>Start Lane</th>
+                        <th>Checked Back?</th>
+                        <th>Check Initials</th>
+                        <th>Signed Off</th>
+                        <th>Sign Off Initials</th>
+                        <th>Complete</th>
+                        <th>Completed At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="laneTableBody">
+                    <!-- Generated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="log-section">
+            <div class="log-header">
+                <h2>📋 ACTIVITY LOG</h2>
+                <div class="export-bar">
+                    <button onclick="exportLog()">📋 Copy Log</button>
+                    <button onclick="clearLog()">🗑️ Clear Log</button>
+                    <button onclick="downloadLog()">⬇ Download</button>
+                </div>
+            </div>
+            <div class="log-body" id="logBody">
+                <div class="no-logs">No activity logged yet. Start using lanes to see entries here.</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <span class="toast-icon" id="toastIcon">✅</span>
+        <span id="toastMessage">Action completed!</span>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p>GUTTERBALL OCEAN TERMINAL &copy; 2024 | <a href="https://gutterballalley.co.uk/venue/edinburgh/" target="_blank">gutterballalley.co.uk</a></p>
+        <p style="margin-top:5px;">Lane Management System v2.0</p>
+    </div>
+
+    <script>
+        // ==================== STATE ====================
+        const TOTAL_LANES = 14;
+        let lanes = {};
+        let activityLog = [];
+        let completedCount = 0;
+        let durationTimers = {};
+
+        // Initialize
+        function initLanes() {
+            const saved = localStorage.getItem('gutterball_lanes');
+            const savedLog = localStorage.getItem('gutterball_log');
+            const savedCount = localStorage.getItem('gutterball_completed');
+
+            if (saved) {
+                lanes = JSON.parse(saved);
+            } else {
+                for (let i = 1; i <= TOTAL_LANES; i++) {
+                    lanes[i] = {
+                        status: 'available',    // available, in-use, checking, signed-off
+                        startTime: null,
+                        checkedBack: false,
+                        checkInitials: '',
+                        signedOff: false,
+                        signOffInitials: '',
+                        completedAt: null
+                    };
+                }
+            }
+
+            if (savedLog) {
+                activityLog = JSON.parse(savedLog);
+            }
+
+            if (savedCount) {
+                completedCount = parseInt(savedCount);
+            }
+        }
+
+        function saveLanes() {
+            localStorage.setItem('gutterball_lanes', JSON.stringify(lanes));
+            localStorage.setItem('gutterball_log', JSON.stringify(activityLog));
+            localStorage.setItem('gutterball_completed', completedCount);
+        }
+
+        // ==================== RENDERING ====================
+        function renderTable() {
+            const tbody = document.getElementById('laneTableBody');
+            tbody.innerHTML = '';
+
+            for (let i = 1; i <= TOTAL_LANES; i++) {
+                const lane = lanes[i];
+                const tr = document.createElement('tr');
+
+                // Row class based on status
+                if (lane.status === 'in-use') tr.className = 'lane-active';
+                else if (lane.status === 'checking') tr.className = 'lane-checked';
+                else if (lane.status === 'signed-off') tr.className = 'lane-completed';
+
+                const isInUse = lane.status !== 'available';
+                const isChecked = lane.checkedBack;
+                const isSignedOff = lane.signedOff;
+
+                tr.innerHTML = `
+                    <td><div class="lane-number">${i}</div></td>
+                    <td>${getStatusBadge(lane.status)}</td>
+                    <td>
+                        <div class="time-display ${lane.startTime ? '' : 'empty'}" id="startTime-${i}">
+                            ${lane.startTime ? formatTime(lane.startTime) : '—'}
+                        </div>
+                    </td>
+                    <td>
+                        <div class="duration-display ${lane.startTime ? '' : 'empty'}" id="duration-${i}">
+                            ${lane.startTime ? getDuration(lane.startTime) : '—'}
+                        </div>
+                    </td>
+                    <td>
+                        <button class="btn btn-start" 
+                                onclick="startLane(${i})" 
+                                ${isInUse ? 'disabled' : ''}>
+                            ${isInUse ? '● ACTIVE' : '▶ START'}
+                        </button>
+                    </td>
+                    <td>
+                        ${isChecked ? '<span class="check-icon">✔</span>' : 
+                        `<button class="btn btn-check" 
+                                onclick="checkBackLane(${i})" 
+                                ${!isInUse || isChecked ? 'disabled' : ''}>
+                            CHECK
+                        </button>`}
+                    </td>
+                    <td>
+                        <input type="text" 
+                               class="lane-input" 
+                               id="checkInitials-${i}" 
+                               placeholder="Initials" 
+                               maxlength="5" 
+                               value="${lane.checkInitials}"
+                               ${!isInUse || isChecked ? 'disabled' : ''}
+                               onkeyup="this.value = this.value.toUpperCase()">
+                    </td>
+                    <td>
+                        ${isSignedOff ? '<span class="check-icon">✔</span>' : 
+                        `<button class="btn btn-signoff" 
+                                onclick="signOffLane(${i})" 
+                                ${!isChecked || isSignedOff ? 'disabled' : ''}>
+                            SIGN OFF
+                        </button>`}
+                    </td>
+                    <td>
+                        <input type="text" 
+                               class="lane-input" 
+                               id="signInitials-${i}" 
+                               placeholder="Initials" 
+                               maxlength="5" 
+                               value="${lane.signOffInitials}"
+                               ${!isChecked || isSignedOff ? 'disabled' : ''}
+                               onkeyup="this.value = this.value.toUpperCase()">
+                    </td>
+                    <td>
+                        <button class="btn btn-complete" 
+                                onclick="completeLane(${i})" 
+                                ${!isSignedOff ? 'disabled' : ''}>
+                            ✓ COMPLETE
+                        </button>
+                    </td>
+                    <td>
+                        <div class="time-display ${lane.completedAt ? '' : 'empty'}">
+                            ${lane.completedAt ? formatTime(lane.completedAt) : '—'}
+                        </div>
+                    </td>
+                    <td>
+                        <button class="btn btn-reset" 
+                                onclick="resetLane(${i})" 
+                                ${!isInUse ? 'disabled' : ''}>
+                            ↺
+                        </button>
+                    </td>
+                `;
+
+                tbody.appendChild(tr);
+            }
+
+            updateStats();
+        }
+
+        function getStatusBadge(status) {
+            switch(status) {
+                case 'available':
+                    return '<span class="status-badge status-available">● AVAILABLE</span>';
+                case 'in-use':
+                    return '<span class="status-badge status-in-use">● IN USE</span>';
+                case 'checking':
+                    return '<span class="status-badge status-checking">● CHECKING</span>';
+                case 'signed-off':
+                    return '<span class="status-badge status-ready">● SIGNED OFF</span>';
+                default:
+                    return '<span class="status-badge status-available">● AVAILABLE</span>';
+            }
+        }
+
+        function updateStats() {
+            let available = 0, inUse = 0, checking = 0;
+            for (let i = 1; i <= TOTAL_LANES; i++) {
+                switch(lanes[i].status) {
+                    case 'available': available++; break;
+                    case 'in-use': inUse++; break;
+                    case 'checking': checking++; break;
+                    case 'signed-off': checking++; break;
+                }
+            }
+            document.getElementById('statAvailable').textContent = available;
+            document.getElementById('statInUse').textContent = inUse;
+            document.getElementById('statChecking').textContent = checking;
+            document.getElementById('statCompleted').textContent = completedCount;
+        }
+
+        // ==================== ACTIONS ====================
+        function startLane(num) {
+            const now = new Date();
+            lanes[num].status = 'in-use';
+            lanes[num].startTime = now.toISOString();
+            lanes[num].checkedBack = false;
+            lanes[num].checkInitials = '';
+            lanes[num].signedOff = false;
+            lanes[num].signOffInitials = '';
+            lanes[num].completedAt = null;
+
+            addLogEntry(num, 'Lane started', '—');
+            saveLanes();
+            renderTable();
+            showToast('🎳', `Lane ${num} is now active!`);
+        }
+
+        function checkBackLane(num) {
+            const initialsInput = document.getElementById(`checkInitials-${num}`);
+            const initials = initialsInput.value.trim().toUpperCase();
+
+            if (!initials) {
+                showToast('⚠️', 'Please enter your initials before checking!');
+                initialsInput.focus();
+                initialsInput.style.borderColor = '#ff4444';
+                setTimeout(() => initialsInput.style.borderColor = '', 2000);
+                return;
+            }
+
+            lanes[num].checkedBack = true;
+            lanes[num].checkInitials = initials;
+            lanes[num].status = 'checking';
+
+            addLogEntry(num, 'Checked back', initials);
+            saveLanes();
+            renderTable();
+            showToast('✅', `Lane ${num} checked by ${initials}`);
+        }
+
+        function signOffLane(num) {
+            const initialsInput = document.getElementById(`signInitials-${num}`);
+            const initials = initialsInput.value.trim().toUpperCase();
+
+            if (!initials) {
+                showToast('⚠️', 'Please enter your initials before signing off!');
+                initialsInput.focus();
+                initialsInput.style.borderColor = '#ff4444';
+                setTimeout(() => initialsInput.style.borderColor = '', 2000);
+                return;
+            }
+
+            lanes[num].signedOff = true;
+            lanes[num].signOffInitials = initials;
+            lanes[num].status = 'signed-off';
+
+            addLogEntry(num, 'Signed off', initials);
+            saveLanes();
+            renderTable();
+            showToast('✅', `Lane ${num} signed off by ${initials}`);
+        }
+
+        function completeLane(num) {
+            const now = new Date();
+            const lane = lanes[num];
+
+            // Log the completion with all details
+            const startStr = lane.startTime ? formatTime(lane.startTime) : '?';
+            const duration = lane.startTime ? getDuration(lane.startTime) : '?';
+            addLogEntry(num, `COMPLETED | Started: ${startStr} | Duration: ${duration} | Checked: ${lane.checkInitials} | Signed: ${lane.signOffInitials}`, '—');
+
+            // Set completed time momentarily for display
+            lane.completedAt = now.toISOString();
+            saveLanes();
+            renderTable();
+
+            completedCount++;
+
+            showToast('🎉', `Lane ${num} completed and cleared!`);
+
+            // Clear lane after a brief moment so user sees the completion time
+            setTimeout(() => {
+                lanes[num] = {
+                    status: 'available',
+                    startTime: null,
+                    checkedBack: false,
+                    checkInitials: '',
+                    signedOff: false,
+                    signOffInitials: '',
+                    completedAt: null
+                };
+                saveLanes();
+                renderTable();
+            }, 2000);
+        }
+
+        function resetLane(num) {
+            if (!confirm(`Reset Lane ${num}? This will clear all data for this lane.`)) return;
+
+            addLogEntry(num, 'Lane reset manually', '—');
+
+            lanes[num] = {
+                status: 'available',
+                startTime: null,
+                checkedBack: false,
+                checkInitials: '',
+                signedOff: false,
+                signOffInitials: '',
+                completedAt: null
+            };
+
+            saveLanes();
+            renderTable();
+            showToast('↺', `Lane ${num} has been reset`);
+        }
+
+        function resetAllLanes() {
+            if (!confirm('Reset ALL lanes? This will clear all current lane data.')) return;
+
+            for (let i = 1; i <= TOTAL_LANES; i++) {
+                lanes[i] = {
+                    status: 'available',
+                    startTime: null,
+                    checkedBack: false,
+                    checkInitials: '',
+                    signedOff: false,
+                    signOffInitials: '',
+                    completedAt: null
+                };
+            }
+
+            addLogEntry('ALL', 'All lanes reset', '—');
+            saveLanes();
+            renderTable();
+            showToast('↺', 'All lanes have been reset');
+        }
+
+        function refreshAll() {
+            renderTable();
+            renderLog();
+            showToast('↻', 'Dashboard refreshed');
+        }
+
+        // ==================== LOGGING ====================
+        function addLogEntry(laneNum, message, initials) {
+            const now = new Date();
+            activityLog.unshift({
+                time: now.toISOString(),
+                lane: laneNum,
+                message: message,
+                initials: initials
+            });
+
+            // Keep max 200 entries
+            if (activityLog.length > 200) {
+                activityLog = activityLog.slice(0, 200);
+            }
+
+            saveLanes();
+            renderLog();
+        }
+
+        function renderLog() {
+            const logBody = document.getElementById('logBody');
+
+            if (activityLog.length === 0) {
+                logBody.innerHTML = '<div class="no-logs">No activity logged yet. Start using lanes to see entries here.</div>';
+                return;
+            }
+
+            logBody.innerHTML = activityLog.map(entry => `
+                <div class="log-entry">
+                    <span class="log-time">${formatTime(entry.time)}</span>
+                    <span class="log-lane">LANE ${entry.lane}</span>
+                    <span class="log-message">${entry.message}</span>
+                    ${entry.initials !== '—' ? `<span class="log-initials">${entry.initials}</span>` : ''}
+                </div>
+            `).join('');
+        }
+
+        function exportLog() {
+            if (activityLog.length === 0) {
+                showToast('⚠️', 'No log entries to copy');
+                return;
+            }
+
+            const text = activityLog.map(entry => {
+                return `${formatDateTime(entry.time)} | Lane ${entry.lane} | ${entry.message} | ${entry.initials}`;
+            }).join('\n');
+
+            const header = `GUTTERBALL OCEAN TERMINAL - Activity Log\n${'='.repeat(60)}\nExported: ${new Date().toLocaleString()}\n${'='.repeat(60)}\n\n`;
+
+            navigator.clipboard.writeText(header + text).then(() => {
+                showToast('📋', 'Log copied to clipboard!');
+            }).catch(() => {
+                // Fallback
+                const ta = document.createElement('textarea');
+                ta.value = header + text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast('📋', 'Log copied to clipboard!');
+            });
+        }
+
+        function downloadLog() {
+            if (activityLog.length === 0) {
+                showToast('⚠️', 'No log entries to download');
+                return;
+            }
+
+            const text = activityLog.map(entry => {
+                return `${formatDateTime(entry.time)} | Lane ${entry.lane} | ${entry.message} | ${entry.initials}`;
+            }).join('\n');
+
+            const header = `GUTTERBALL OCEAN TERMINAL - Activity Log\n${'='.repeat(60)}\nExported: ${new Date().toLocaleString()}\n${'='.repeat(60)}\n\n`;
+
+            const blob = new Blob([header + text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `gutterball-log-${new Date().toISOString().split('T')[0]}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('⬇', 'Log downloaded!');
+        }
+
+        function clearLog() {
+            if (!confirm('Clear entire activity log?')) return;
+            activityLog = [];
+            completedCount = 0;
+            saveLanes();
+            renderLog();
+            updateStats();
+            showToast('🗑️', 'Activity log cleared');
+        }
+
+        // ==================== UTILITIES ====================
+        function formatTime(isoString) {
+            const d = new Date(isoString);
+            return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+
+        function formatDateTime(isoString) {
+            const d = new Date(isoString);
+            return d.toLocaleString('en-GB', { 
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit' 
+            });
+        }
+
+        function getDuration(startISO) {
+            const start = new Date(startISO);
+            const now = new Date();
+            const diff = Math.floor((now - start) / 1000);
+
+            const hrs = Math.floor(diff / 3600);
+            const mins = Math.floor((diff % 3600) / 60);
+            const secs = diff % 60;
+
+            if (hrs > 0) {
+                return `${hrs}h ${mins.toString().padStart(2, '0')}m`;
+            }
+            return `${mins}m ${secs.toString().padStart(2, '0')}s`;
+        }
+
+        function showToast(icon, message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastIcon').textContent = icon;
+            document.getElementById('toastMessage').textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // ==================== CLOCK ====================
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('liveClock').textContent = now.toLocaleTimeString('en-GB', {
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+            document.getElementById('liveDate').textContent = now.toLocaleDateString('en-GB', {
+                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+            });
+        }
+
+        // Update durations every second
+        function updateDurations() {
+            for (let i = 1; i <= TOTAL_LANES; i++) {
+                if (lanes[i].startTime) {
+                    const el = document.getElementById(`duration-${i}`);
+                    if (el) {
+                        el.textContent = getDuration(lanes[i].startTime);
+                        el.classList.remove('empty');
+                    }
+                }
+            }
+        }
+
+        // ==================== INIT ====================
+        initLanes();
+        renderTable();
+        renderLog();
+        updateClock();
+
+        setInterval(updateClock, 1000);
+        setInterval(updateDurations, 1000);
+    </script>
+
+</body>
+</html>
